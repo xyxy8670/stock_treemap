@@ -14,8 +14,6 @@ import tempfile
 st.set_page_config(page_title="주식 테마 트리맵 생성기", layout="wide")
 st.title("주식 테마 트리맵 생성기")
 
-custom_color_code = st.sidebar.text_input("내부 색상 코드 (예: #ff0000)", value="")
-
 # Pretendard 폰트 다운로드 및 설정 (더 명확한 경로 지정)
 def setup_font():
     try:
@@ -64,6 +62,8 @@ def setup_font():
     except Exception as e:
         st.warning(f"폰트 설정 오류: {str(e)}")
         return None
+
+custom_color_code = st.sidebar.text_input("내부 색상 코드 (예: #ff0000)", value="")
 
 
 # 폰트 설정 적용
