@@ -148,7 +148,7 @@ if st.session_state.theme_data:
         # 예를 들어, 만약 base 색상이 "#FF0000"이면, base RGB = (1,0,0)이고,
         # target G 값을 0.65 (즉, 165/255)로 설정하여 n=0일 때 색상이 (1,0.65,0) (#FFA500)이 되도록 합니다.
         base_rgb = to_rgb(custom_color_code)
-        target_green = 0.65  # 목표 G 값 (최저값에 해당)
+        target_green = 0.5  # 목표 G 값 (최저값에 해당)
         colors = []
         for n in normalized_values:
             # n=1 -> G = base_rgb[1], n=0 -> G = target_green
