@@ -1,39 +1,18 @@
 import streamlit as st
 import matplotlib.pyplot as plt
+import squarify
+import numpy as np
 import matplotlib.font_manager as fm
+import matplotlib.patches as patches
+import pandas as pd
+from io import BytesIO
+import os
 import requests
-import io
+import tempfile
 
-
-def setup_font():
-    try:
-        # GitHub Raw 또는 CDN에서 Pretndard 폰트 파일을 바로 읽어들여 메모리에 저장
-        font_url = 'https://github.com/orioncactus/pretendard/raw/main/packages/pretendard-std/dist/web/static/PretendardStd-SemiBold.otf'
-        response = requests.get(font_url)
-        if response.status_code == 200:
-            font_bytes = io.BytesIO(response.content)
-
-            # 폰트 매니저에 등록
-            fm.fontManager.addfont(font_bytes)
-            font_obj = fm.FontProperties(fname=font_bytes)
-
-            # 폰트 이름 확인
-            st.write(f"폰트 이름: {font_obj.get_name()}")
-
-            # matplotlib에 폰트 적용
-            plt.rcParams['font.family'] = font_obj.get_name()
-            plt.rcParams['axes.unicode_minus'] = False
-
-            return font_obj
-        else:
-            st.warning(f"폰트 다운로드 실패(상태 코드: {response.status_code})")
-            return None
-    except Exception as e:
-        st.warning(f"폰트 설정 오류: {str(e)}")
-        return None
-
-
-font_prop = setup_font()
+# 페이지 설정
+st.set_page_config(page_title="주식 테마 트리맵 생성기", layout="wide")
+st.title("주식 테마 트리맵 생성기")
 
 
 # Pretendard 폰트 다운로드 및 설정 (더 명확한 경로 지정)
@@ -42,11 +21,12 @@ def setup_font():
         # 폰트 저장 경로
         font_dir = os.path.join(os.getcwd(), 'fonts')
         os.makedirs(font_dir, exist_ok=True)
-        font_path = os.path.join(font_dir, 'PretendardStd-SemiBold.otf')
+        font_path = os.path.join(font_dir, 'Pretendard-SemiBold.otf')
 
         # 폰트 파일이 없으면 다운로드
         if not os.path.exists(font_path):
-            font_url = 'https://github.com/orioncactus/pretendard/raw/main/packages/pretendard-std/dist/web/static/PretendardStd-SemiBold.otf'
+            # GitHub Raw 링크로 교체
+            font_url = 'https://raw.githubusercontent.com/xyxy8670/stock_treemap/8c4363de7470242d6f04bdda2de16cd3454b70fa/chart/Pretendard-SemiBold.otf'
 
             try:
                 response = requests.get(font_url)
@@ -173,8 +153,10 @@ if st.session_state.theme_data:
         # 색상 설정
         max_value = max(values) if values else 1
         min_value = min(values) if values else 0
-        normalized_values = [(val - min_value) / (max_value - min_value) if max_value > min_value else 0.5 for val in
-                             values]
+        normalized_values = [
+            (val - min_value) / (max_value - min_value) if max_value > min_value else 0.5
+            for val in values
+        ]
 
         # 색상 맵 선택
         cmap = plt.cm.get_cmap(color_option)
@@ -309,8 +291,13 @@ if st.session_state.theme_data:
             labels = [item[0] for item in sorted_data]
             values = [item[1] for item in sorted_data]
 
-            squarify.plot(sizes=values, label=[f"{l}\n{v}%" for l, v in zip(labels, values)],
-                          alpha=.8, color=plt.cm.get_cmap(color_option)(np.linspace(0.4, 0.8, len(values))), ax=ax)
+            squarify.plot(
+                sizes=values,
+                label=[f"{l}\n{v}%" for l, v in zip(labels, values)],
+                alpha=.8,
+                color=plt.cm.get_cmap(color_option)(np.linspace(0.4, 0.8, len(values))),
+                ax=ax
+            )
 
             ax.axis('off')
             plt.title(title_text, fontsize=18)
