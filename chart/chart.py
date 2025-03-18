@@ -10,7 +10,7 @@ import os
 import requests
 import tempfile
 
-# 페이지 설정
+# 페이지 설
 st.set_page_config(page_title="주식 테마 트리맵 생성기", layout="wide")
 st.title("주식 테마 트리맵 생성기")
 
