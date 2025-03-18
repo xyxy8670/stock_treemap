@@ -1,18 +1,39 @@
 import streamlit as st
 import matplotlib.pyplot as plt
-import squarify
-import numpy as np
 import matplotlib.font_manager as fm
-import matplotlib.patches as patches
-import pandas as pd
-from io import BytesIO
-import os
 import requests
-import tempfile
+import io
 
-# 페이지 설정
-st.set_page_config(page_title="주식 테마 트리맵 생성기", layout="wide")
-st.title("주식 테마 트리맵 생성기")
+
+def setup_font():
+    try:
+        # GitHub Raw 또는 CDN에서 Pretendard 폰트 파일을 바로 읽어들여 메모리에 저장
+        font_url = 'https://github.com/orioncactus/pretendard/raw/main/packages/pretendard-std/dist/web/static/PretendardStd-SemiBold.otf'
+        response = requests.get(font_url)
+        if response.status_code == 200:
+            font_bytes = io.BytesIO(response.content)
+
+            # 폰트 매니저에 등록
+            fm.fontManager.addfont(font_bytes)
+            font_obj = fm.FontProperties(fname=font_bytes)
+
+            # 폰트 이름 확인
+            st.write(f"폰트 이름: {font_obj.get_name()}")
+
+            # matplotlib에 폰트 적용
+            plt.rcParams['font.family'] = font_obj.get_name()
+            plt.rcParams['axes.unicode_minus'] = False
+
+            return font_obj
+        else:
+            st.warning(f"폰트 다운로드 실패(상태 코드: {response.status_code})")
+            return None
+    except Exception as e:
+        st.warning(f"폰트 설정 오류: {str(e)}")
+        return None
+
+
+font_prop = setup_font()
 
 
 # Pretendard 폰트 다운로드 및 설정 (더 명확한 경로 지정)
