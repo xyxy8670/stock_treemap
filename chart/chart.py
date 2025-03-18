@@ -7,7 +7,7 @@ import io
 
 def setup_font():
     try:
-        # GitHub Raw 또는 CDN에서 Pretendard 폰트 파일을 바로 읽어들여 메모리에 저장
+        # GitHub Raw 또는 CDN에서 Pretndard 폰트 파일을 바로 읽어들여 메모리에 저장
         font_url = 'https://github.com/orioncactus/pretendard/raw/main/packages/pretendard-std/dist/web/static/PretendardStd-SemiBold.otf'
         response = requests.get(font_url)
         if response.status_code == 200:
