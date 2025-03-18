@@ -18,7 +18,7 @@ st.title("주식 테마 트리맵 생성기")
 def setup_font():
     try:
         # 사용할 폰트 파일 (Pretendard-Regular.otf)
-        font_path = 'Pretendard-Regular.otf'
+        font_path = 'Pretendard-Bold.otf'
 
         # 폰트 파일이 존재하는지 확인
         if os.path.exists(font_path):
@@ -83,6 +83,9 @@ if st.sidebar.button("데이터 추가"):
 # 시각화 옵션
 st.sidebar.header("시각화 옵션")
 color_option = st.sidebar.selectbox("색상 계열", ["Reds", "Greens", "Blues", "Purples", "Oranges"])
+# 내부 색상 코드를 입력할 수 있도록 추가 (비워두면 colormap 사용)
+custom_color_code = st.sidebar.text_input("내부 색상 코드 (예: #ff0000)", value="")
+
 title_text = st.sidebar.text_input("제목", "테마별 주식 상승률 트리맵")
 
 # 폰트 크기 설정
@@ -95,7 +98,7 @@ watermark_text = st.sidebar.text_input("워터마크 텍스트", "플스포")
 watermark_opacity = st.sidebar.slider("워터마크 투명도", 0.0, 1.0, 0.3)
 watermark_size = st.sidebar.slider("워터마크 크기", 20, 100, 50)
 
-# 현재 데이터 목록 표시
+# 현재 데이터 목록 표시 (사이드바에서는 상승률 내림차순으로 정렬)
 st.sidebar.header("현재 데이터")
 if st.session_state.theme_data:
     data_df = pd.DataFrame(
@@ -115,57 +118,50 @@ if st.sidebar.button("모든 데이터 삭제"):
     st.session_state.theme_data = {}
     st.sidebar.success("모든 데이터가 삭제되었습니다.")
 
-# 메인 영역 - 샘플 데이터 버튼 및 트리맵 표시
-st.header("샘플 데이터")
-if st.button("샘플 데이터 불러오기"):
-    st.session_state.theme_data = {
-        "반도체 재료/부품": 12.91,
-        "화장품": 12.05,
-        "제약/바이오": 10.53,
-        "반도체 장비": 10.27,
-        "우주항공": 9.13,
-        "방산": 9.12,
-        "AI(인공지능)": 9.04,
-        "AI(엔비디아)": 8.99,
-        "음식료": 8.97,
-        "태양광": 8.73,
-        "소매유통": 8.47,
-        "이재명": 8.26
-    }
-    st.success("샘플 데이터가 로드되었습니다.")
+# 메인 영역 - 트리맵 표시
+col1, col2 = st.columns([2, 1])
 
-st.header("트리맵 미리보기")
+with col1:
+    st.header("트리맵 미리보기")
 
-if st.session_state.theme_data:
-    # 트리맵 생성
-    fig, ax = plt.subplots(figsize=(10, 6))
+    if st.session_state.theme_data:
+        # 트리맵 생성
+        fig, ax = plt.subplots(figsize=(10, 6))
 
-    # 데이터를 상승률 기준으로 내림차순 정렬
-    sorted_data = sorted(st.session_state.theme_data.items(), key=lambda x: x[1], reverse=True)
-    labels = [item[0] for item in sorted_data]
-    values = [item[1] for item in sorted_data]
-    sizes = values
+        # 데이터 준비
+        data = st.session_state.theme_data
+        # 입력 순서대로 사용
+        labels = list(data.keys())
+        values = list(data.values())
+        sizes = values
 
-    # 색상 설정
-    max_value = max(values) if values else 1
-    min_value = min(values) if values else 0
-    normalized_values = [(val - min_value) / (max_value - min_value) if max_value > min_value else 0.5 for val in
-                         values]
+        # 색상 설정
+        max_value = max(values) if values else 1
+        min_value = min(values) if values else 0
+        normalized_values = [
+            (val - min_value) / (max_value - min_value) if max_value > min_value else 0.5
+            for val in values
+        ]
 
-    # 색상 맵 선택
-    cmap = plt.cm.get_cmap(color_option)
-    colors = [cmap(0.5 + 0.5 * val) for val in normalized_values]
+        # 만약 custom_color_code가 입력되었다면 해당 색상을 사용, 아니면 colormap 사용
+        if custom_color_code:
+            colors = [custom_color_code] * len(normalized_values)
+        else:
+            cmap = plt.cm.get_cmap(color_option)
+            colors = [cmap(0.5 + 0.5 * val) for val in normalized_values]
 
-    # 트리맵 생성
-    if values:  # 값이 있을 때만 처리
-        norm_sizes = [size / sum(sizes) for size in sizes]
+        # squarify에 들어갈 사이즈 비율 계산
+        total = sum(values)
+        norm_sizes = [v / total for v in values]
+
+        # 트리맵 생성 (기본 squarify 알고리즘 사용)
         rects = squarify.squarify(norm_sizes, 0, 0, 1, 1)
 
         # 각 사각형 그리기
         for i, rect in enumerate(rects):
             x, y, dx, dy = rect['x'], rect['y'], rect['dx'], rect['dy']
 
-            # 배경 색상 사각형
+            # 사각형 배경 색상
             ax.add_patch(
                 patches.Rectangle(
                     (x, y),
@@ -185,12 +181,10 @@ if st.session_state.theme_data:
                 'fontweight': 'bold',
                 'color': 'white'
             }
-
-            # 폰트 속성이 있을 경우에만 추가
             if font_prop is not None:
                 text_options['fontproperties'] = font_prop
 
-            # 라벨 추가 (테마명)
+            # 테마명 텍스트 추가
             ax.text(
                 x + dx / 2,
                 y + dy / 2 - 0.02,
@@ -198,7 +192,7 @@ if st.session_state.theme_data:
                 **text_options
             )
 
-            # 상승률 값 옵션 설정
+            # 상승률 텍스트 옵션 설정
             value_options = {
                 'horizontalalignment': 'center',
                 'verticalalignment': 'center',
@@ -206,11 +200,10 @@ if st.session_state.theme_data:
                 'fontweight': 'bold',
                 'color': 'white'
             }
-
             if font_prop is not None:
                 value_options['fontproperties'] = font_prop
 
-            # 상승률 값 추가
+            # 상승률 텍스트 추가
             ax.text(
                 x + dx / 2,
                 y + dy / 2 + 0.04,
@@ -229,37 +222,51 @@ if st.session_state.theme_data:
                 'fontweight': 'bold',
                 'rotation': 0
             }
-
             if font_prop is not None:
                 watermark_options['fontproperties'] = font_prop
-
             fig.text(0.5, 0.5, watermark_text, **watermark_options)
 
-    # 제목 옵션 설정
-    title_options = {
-        'fontsize': 18
-    }
+        # 제목 옵션 설정
+        title_options = {'fontsize': 18}
+        if font_prop is not None:
+            title_options['fontproperties'] = font_prop
 
-    if font_prop is not None:
-        title_options['fontproperties'] = font_prop
+        # 그래프 설정
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.axis('off')
+        fig.suptitle(title_text, **title_options)
 
-    # 그래프 설정
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.axis('off')
-    fig.suptitle(title_text, **title_options)
+        # 그래프 표시
+        st.pyplot(fig)
 
-    # 그래프 표시
-    st.pyplot(fig)
+        # 다운로드 버튼
+        buf = BytesIO()
+        fig.savefig(buf, format="png", dpi=300, bbox_inches='tight')
+        st.download_button(
+            label="트리맵 이미지 다운로드",
+            data=buf.getvalue(),
+            file_name="treemap.png",
+            mime="image/png"
+        )
+    else:
+        st.info("트리맵을 생성하려면 왼쪽 사이드바에서 데이터를 추가하세요.")
 
-    # 다운로드 버튼
-    buf = BytesIO()
-    fig.savefig(buf, format="png", dpi=300, bbox_inches='tight')
-    st.download_button(
-        label="트리맵 이미지 다운로드",
-        data=buf.getvalue(),
-        file_name="treemap.png",
-        mime="image/png"
-    )
-else:
-    st.info("트리맵을 생성하려면 데이터를 추가하거나 샘플 데이터를 불러오세요.")
+with col2:
+    st.header("샘플 데이터")
+    if st.button("샘플 데이터 불러오기"):
+        st.session_state.theme_data = {
+            "반도체 재료/부품": 12.91,
+            "화장품": 12.05,
+            "제약/바이오": 10.53,
+            "반도체 장비": 10.27,
+            "우주항공": 9.13,
+            "방산": 9.12,
+            "AI(인공지능)": 9.04,
+            "AI(엔비디아)": 8.99,
+            "음식료": 8.97,
+            "태양광": 8.73,
+            "소매유통": 8.47,
+            "이재명": 8.26
+        }
+        st.success("샘플 데이터가 로드되었습니다.")
