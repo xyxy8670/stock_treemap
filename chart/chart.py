@@ -13,7 +13,7 @@ from matplotlib.colors import to_rgb, to_hex
 
 # 페이지 설정
 st.set_page_config(page_title="주식 테마 트리맵 생성기", layout="wide")
-st.title("주식 테마 트리맵 생성기 (버전 1.1)")
+st.title("주식 테마 트리맵 생성기 (버전 1.3)")
 
 
 # Pretendard 폰트 다운로드 및 설정
@@ -84,18 +84,20 @@ if st.sidebar.button("데이터 추가"):
 
 # 시각화 옵션
 st.sidebar.header("시각화 옵션")
-color_option = st.sidebar.selectbox("색상 계열", ["Reds", "Greens", "Blues", "Purples", "Oranges"])
-# 내부 색상 코드 입력 (비워두면 colormap 사용)
-custom_color_code = st.sidebar.text_input("내부 색상 코드 (예: #ff0000)", value="")
+# 색상 계열 선택은 참고용으로 남겨두지만 내부 색상은 아래에서 사용자 입력값을 기반으로 처리합니다.
+color_option = st.sidebar.selectbox("색상 계열 (미사용)", ["Reds", "Greens", "Blues", "Purples", "Oranges"])
+# 내부 색상 코드 입력: 사용자가 원하는 값을 입력 (예: "#FF0000")
+custom_color_code = st.sidebar.text_input("내부 색상 코드 (예: #FF0000)", value="#FF0000")
 title_text = st.sidebar.text_input("제목", "테마별 주식 상승률 트리맵")
-theme_font_size = st.sidebar.slider("테마명 폰트 크기", 8, 24, 14)
-value_font_size = st.sidebar.slider("상승률 폰트 크기", 8, 24, 16)
+# 고정: 테마명 폰트 크기 17, 상승률 폰트 크기 14
+theme_font_size = 17
+value_font_size = 14
 
-# 워터마크 옵션
+# 워터마크 옵션 (워터마크 크기 85 고정)
 watermark_enabled = st.sidebar.checkbox("워터마크 추가", True)
 watermark_text = st.sidebar.text_input("워터마크 텍스트", "플스포")
 watermark_opacity = st.sidebar.slider("워터마크 투명도", 0.0, 1.0, 0.3)
-watermark_size = st.sidebar.slider("워터마크 크기", 20, 100, 50)
+watermark_size = 85
 
 # 현재 데이터 편집 (data_editor)
 st.sidebar.header("현재 데이터 (편집 가능)")
@@ -110,8 +112,6 @@ edited_df = st.sidebar.data_editor(
     use_container_width=True,
     key="editable_data"
 )
-
-# 즉시 수정 내용을 session_state에 반영
 new_data = {}
 for idx, row in edited_df.iterrows():
     theme = str(row['테마']).strip()
@@ -142,18 +142,19 @@ if st.session_state.theme_data:
         ]
 
         # 내부 색상 지정:
-        # custom_color_code가 입력되면, 최고 상승률 항목은 원본 색상, 나머지는 어두워지도록 선형 보간
-        if custom_color_code:
-            base_rgb = to_rgb(custom_color_code)
-            dark_factor = 0.7  # 최저값일 때 밝기 배율 (0~1)
-            colors = []
-            for n in normalized_values:
-                factor = dark_factor + (1 - dark_factor) * n
-                adjusted_rgb = tuple(comp * factor for comp in base_rgb)
-                colors.append(to_hex(adjusted_rgb))
-        else:
-            cmap = plt.cm.get_cmap(color_option)
-            colors = [cmap(0.5 + 0.5 * n) for n in normalized_values]
+        # 사용자가 입력한 내부 색상 코드(custom_color_code)를 기본으로 하여,
+        # 최고 상승률 (n=1)은 원래 색상, 낮은 값 (n=0)은 초록 성분을 증가시켜 주황색에 가까워지도록.
+        # 여기서는 R와 B는 그대로 두고, G 값을 base_G + (target - base_G) * (1 - n) 로 계산합니다.
+        # 예를 들어, 만약 base 색상이 "#FF0000"이면, base RGB = (1,0,0)이고,
+        # target G 값을 0.65 (즉, 165/255)로 설정하여 n=0일 때 색상이 (1,0.65,0) (#FFA500)이 되도록 합니다.
+        base_rgb = to_rgb(custom_color_code)
+        target_green = 0.65  # 목표 G 값 (최저값에 해당)
+        colors = []
+        for n in normalized_values:
+            # n=1 -> G = base_rgb[1], n=0 -> G = target_green
+            new_green = base_rgb[1] + (target_green - base_rgb[1]) * (1 - n)
+            new_rgb = (base_rgb[0], new_green, base_rgb[2])
+            colors.append(to_hex(new_rgb))
 
         if values:
             norm_sizes = [size / sum(sizes) for size in sizes]
