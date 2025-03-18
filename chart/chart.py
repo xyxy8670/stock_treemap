@@ -7,29 +7,43 @@ import matplotlib.patches as patches
 import platform
 import pandas as pd
 from io import BytesIO
+import os
+import urllib.request
 
 # 페이지 설정
 st.set_page_config(page_title="주식 테마 트리맵 생성기", layout="wide")
 st.title("주식 테마 트리맵 생성기")
 
 
-# 한글 폰트 설정
+# 나눔고딕 폰트 자동 다운로드 및 설정
 def setup_font():
-    system = platform.system()
-    if system == 'Windows':
-        font_path = 'C:/Windows/Fonts/malgun.ttf'
-    elif system == 'Darwin':  # macOS
-        font_path = '/System/Library/Fonts/AppleSDGothicNeo.ttc'
-    else:  # Linux 등
-        font_path = '/usr/share/fonts/truetype/nanum/NanumGothic.ttf'
-
     try:
-        return fm.FontProperties(fname=font_path)
-    except:
-        st.warning("기본 한글 폰트를 찾을 수 없습니다. 시스템 기본 폰트를 사용합니다.")
+        # 폰트 파일 경로
+        font_name = 'NanumGothic.ttf'
+
+        # 폰트가 없으면 다운로드
+        if not os.path.exists(font_name):
+            font_url = 'https://raw.githubusercontent.com/googlefonts/nanum-gothic/main/fonts/ttf/NanumGothic-Regular.ttf'
+            urllib.request.urlretrieve(font_url, font_name)
+            st.info("나눔고딕 폰트를 다운로드했습니다.")
+
+        # 폰트 속성 생성
+        font_prop = fm.FontProperties(fname=font_name)
+
+        # matplotlib 기본 설정
+        plt.rcParams['font.family'] = font_prop.get_name()
+        plt.rcParams['axes.unicode_minus'] = False
+
+        return font_prop
+    except Exception as e:
+        st.warning(f"폰트 설정 중 오류 발생: {str(e)}")
+        # 기본 폰트 사용
+        plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif']
+        plt.rcParams['axes.unicode_minus'] = False
         return None
 
 
+# 폰트 설정 적용
 font_prop = setup_font()
 
 # 사이드바 - 데이터 입력
@@ -129,51 +143,78 @@ with col1:
                     )
                 )
 
+                # 텍스트 옵션 설정 (테마명)
+                text_options = {
+                    'horizontalalignment': 'center',
+                    'verticalalignment': 'center',
+                    'fontsize': theme_font_size,
+                    'fontweight': 'bold',
+                    'color': 'white'
+                }
+
+                # 폰트 속성이 있을 경우에만 추가
+                if font_prop is not None:
+                    text_options['fontproperties'] = font_prop
+
                 # 라벨 추가 (테마명)
                 ax.text(
                     x + dx / 2,
                     y + dy / 2 - 0.02,
                     f"{labels[i]}",
-                    horizontalalignment='center',
-                    verticalalignment='center',
-                    fontproperties=font_prop,
-                    fontsize=theme_font_size,  # 사용자 지정 폰트 크기
-                    fontweight='bold',
-                    color='white'
+                    **text_options
                 )
 
-                # 상승률 값 추가 (별도로 표시)
+                # 상승률 값 옵션 설정
+                value_options = {
+                    'horizontalalignment': 'center',
+                    'verticalalignment': 'center',
+                    'fontsize': value_font_size,
+                    'fontweight': 'bold',
+                    'color': 'white'
+                }
+
+                if font_prop is not None:
+                    value_options['fontproperties'] = font_prop
+
+                # 상승률 값 추가
                 ax.text(
                     x + dx / 2,
                     y + dy / 2 + 0.04,
                     f"{values[i]}%",
-                    horizontalalignment='center',
-                    verticalalignment='center',
-                    fontproperties=font_prop,
-                    fontsize=value_font_size,  # 사용자 지정 폰트 크기
-                    fontweight='bold',
-                    color='white'
+                    **value_options
                 )
 
             # 워터마크 추가
-            # 워터마크 추가
             if watermark_enabled:
-                fig.text(0.5, 0.5, watermark_text,
-                         fontsize=watermark_size,
-                         color='white',
-                         ha='center',
-                         va='center',
-                         alpha=watermark_opacity,
-                         fontweight='bold',
-                         fontproperties=font_prop,
-                         rotation=0,  # 회전 없음 (정방향)
-                         transform=ax.transAxes)
+                watermark_options = {
+                    'fontsize': watermark_size,
+                    'color': 'white',
+                    'ha': 'center',
+                    'va': 'center',
+                    'alpha': watermark_opacity,
+                    'fontweight': 'bold',
+                    'rotation': 0,
+                    'transform': ax.transAxes
+                }
+
+                if font_prop is not None:
+                    watermark_options['fontproperties'] = font_prop
+
+                fig.text(0.5, 0.5, watermark_text, **watermark_options)
+
+        # 제목 옵션 설정
+        title_options = {
+            'fontsize': 18
+        }
+
+        if font_prop is not None:
+            title_options['fontproperties'] = font_prop
 
         # 그래프 설정
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.axis('off')
-        fig.suptitle(title_text, fontproperties=font_prop, fontsize=18)
+        fig.suptitle(title_text, **title_options)
 
         # 그래프 표시
         st.pyplot(fig)
