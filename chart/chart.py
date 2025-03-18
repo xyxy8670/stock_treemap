@@ -7,58 +7,62 @@ import matplotlib.patches as patches
 import pandas as pd
 from io import BytesIO
 import os
-import platform
+import requests
+import tempfile
 
 # 페이지 설정
 st.set_page_config(page_title="주식 테마 트리맵 생성기", layout="wide")
 st.title("주식 테마 트리맵 생성기")
 
+custom_color_code = st.sidebar.text_input("내부 색상 코드 (예: #ff0000)", value="")
 
-# 로컬 폴더의 Pretendard 폰트 사용 설정
+# Pretendard 폰트 다운로드 및 설정 (더 명확한 경로 지정)
 def setup_font():
     try:
-        # 사용할 폰트 파일 (Pretendard-Regular.otf)
-        font_path = 'Pretendard-Bold.otf'
+        # 폰트 저장 경로
+        font_dir = os.path.join(os.getcwd(), 'fonts')
+        os.makedirs(font_dir, exist_ok=True)
+        font_path = os.path.join(font_dir, 'Pretendard-SemiBold.otf')
 
-        # 폰트 파일이 존재하는지 확인
-        if os.path.exists(font_path):
-            # 폰트 속성 생성
-            font_prop = fm.FontProperties(fname=font_path)
+        # 폰트 파일이 없으면 다운로드
+        if not os.path.exists(font_path):
+            # GitHub Raw 링크로 교체
+            font_url = 'https://raw.githubusercontent.com/xyxy8670/stock_treemap/8c4363de7470242d6f04bdda2de16cd3454b70fa/chart/Pretendard-SemiBold.otf'
 
-            # matplotlib 기본 설정
-            plt.rcParams['font.family'] = font_prop.get_name()
+            try:
+                response = requests.get(font_url)
+                if response.status_code == 200:
+                    with open(font_path, 'wb') as f:
+                        f.write(response.content)
+                    st.success(f"Pretendard 폰트를 다운로드했습니다: {font_path}")
+                else:
+                    st.warning(f"폰트 다운로드 실패 (상태 코드: {response.status_code}). 시스템 폰트를 사용합니다.")
+                    return None
+            except Exception as e:
+                st.warning(f"폰트 다운로드 오류: {str(e)}")
+                return None
+
+        # 폰트 등록 및 적용
+        try:
+            # 폰트를 matplotlib 캐시에 추가
+            fm.fontManager.addfont(font_path)
+            # 폰트 매니저에 등록
+            font_obj = fm.FontProperties(fname=font_path)
+
+            # 폰트 속성 확인
+            st.text(f"폰트 이름: {font_obj.get_name()}")
+            st.text(f"폰트 패밀리: {font_obj.get_family()}")
+
+            # matplotlib에 폰트 설정 (폰트 이름 사용)
+            plt.rcParams['font.family'] = font_obj.get_name()
             plt.rcParams['axes.unicode_minus'] = False
 
-            st.success("Pretendard 폰트를 성공적으로 불러왔습니다.")
-            return font_prop
-        else:
-            font_files = [f for f in os.listdir('.') if f.startswith('Pretendard-') and f.endswith('.otf')]
-            if font_files:
-                # 첫 번째 발견된 Pretendard 폰트 사용
-                font_path = font_files[0]
-                font_prop = fm.FontProperties(fname=font_path)
-
-                # matplotlib 기본 설정
-                plt.rcParams['font.family'] = font_prop.get_name()
-                plt.rcParams['axes.unicode_minus'] = False
-
-                st.success(f"{font_path} 폰트를 성공적으로 불러왔습니다.")
-                return font_prop
-            else:
-                st.warning("폰트 파일을 찾을 수 없습니다. 기본 폰트를 사용합니다.")
-                # 기본 폰트 설정
-                system = platform.system()
-                if system == 'Darwin':  # macOS
-                    plt.rcParams['font.family'] = 'AppleGothic'
-                else:
-                    plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif']
-                plt.rcParams['axes.unicode_minus'] = False
-                return None
+            return font_obj
+        except Exception as e:
+            st.warning(f"폰트 등록 오류: {str(e)}")
+            return None
     except Exception as e:
-        st.warning(f"폰트 설정 중 오류 발생: {str(e)}")
-        # 기본 폰트 사용
-        plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif']
-        plt.rcParams['axes.unicode_minus'] = False
+        st.warning(f"폰트 설정 오류: {str(e)}")
         return None
 
 
@@ -83,9 +87,6 @@ if st.sidebar.button("데이터 추가"):
 # 시각화 옵션
 st.sidebar.header("시각화 옵션")
 color_option = st.sidebar.selectbox("색상 계열", ["Reds", "Greens", "Blues", "Purples", "Oranges"])
-# 내부 색상 코드를 입력할 수 있도록 추가 (비워두면 colormap 사용)
-custom_color_code = st.sidebar.text_input("내부 색상 코드 (예: #ff0000)", value="")
-
 title_text = st.sidebar.text_input("제목", "테마별 주식 상승률 트리맵")
 
 # 폰트 크기 설정
@@ -98,7 +99,7 @@ watermark_text = st.sidebar.text_input("워터마크 텍스트", "플스포")
 watermark_opacity = st.sidebar.slider("워터마크 투명도", 0.0, 1.0, 0.3)
 watermark_size = st.sidebar.slider("워터마크 크기", 20, 100, 50)
 
-# 현재 데이터 목록 표시 (사이드바에서는 상승률 내림차순으로 정렬)
+# 현재 데이터 목록 표시
 st.sidebar.header("현재 데이터")
 if st.session_state.theme_data:
     data_df = pd.DataFrame(
@@ -118,21 +119,36 @@ if st.sidebar.button("모든 데이터 삭제"):
     st.session_state.theme_data = {}
     st.sidebar.success("모든 데이터가 삭제되었습니다.")
 
-# 메인 영역 - 트리맵 표시
-col1, col2 = st.columns([2, 1])
+# 메인 영역 - 샘플 데이터 버튼 및 트리맵 표시
+st.header("샘플 데이터")
+if st.button("샘플 데이터 불러오기"):
+    st.session_state.theme_data = {
+        "반도체 재료/부품": 12.91,
+        "화장품": 12.05,
+        "제약/바이오": 10.53,
+        "반도체 장비": 10.27,
+        "우주항공": 9.13,
+        "방산": 9.12,
+        "AI(인공지능)": 9.04,
+        "AI(엔비디아)": 8.99,
+        "음식료": 8.97,
+        "태양광": 8.73,
+        "소매유통": 8.47,
+        "이재명": 8.26
+    }
+    st.success("샘플 데이터가 로드되었습니다.")
 
-with col1:
-    st.header("트리맵 미리보기")
+st.header("트리맵 미리보기")
 
-    if st.session_state.theme_data:
+if st.session_state.theme_data:
+    try:
         # 트리맵 생성
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        # 데이터 준비
-        data = st.session_state.theme_data
-        # 입력 순서대로 사용
-        labels = list(data.keys())
-        values = list(data.values())
+        # 데이터를 상승률 기준으로 내림차순 정렬
+        sorted_data = sorted(st.session_state.theme_data.items(), key=lambda x: x[1], reverse=True)
+        labels = [item[0] for item in sorted_data]
+        values = [item[1] for item in sorted_data]
         sizes = values
 
         # 색상 설정
@@ -143,99 +159,113 @@ with col1:
             for val in values
         ]
 
-        # 만약 custom_color_code가 입력되었다면 해당 색상을 사용, 아니면 colormap 사용
-        if custom_color_code:
-            colors = [custom_color_code] * len(normalized_values)
-        else:
-            cmap = plt.cm.get_cmap(color_option)
-            colors = [cmap(0.5 + 0.5 * val) for val in normalized_values]
+        # 색상 맵 선택
+        cmap = plt.cm.get_cmap(color_option)
+        colors = [cmap(0.5 + 0.5 * val) for val in normalized_values]
 
-        # squarify에 들어갈 사이즈 비율 계산
-        total = sum(values)
-        norm_sizes = [v / total for v in values]
+        # 트리맵 생성
+        if values:  # 값이 있을 때만 처리
+            norm_sizes = [size / sum(sizes) for size in sizes]
+            rects = squarify.squarify(norm_sizes, 0, 0, 1, 1)
 
-        # 트리맵 생성 (기본 squarify 알고리즘 사용)
-        rects = squarify.squarify(norm_sizes, 0, 0, 1, 1)
+            # 각 사각형 그리기
+            for i, rect in enumerate(rects):
+                x, y, dx, dy = rect['x'], rect['y'], rect['dx'], rect['dy']
 
-        # 각 사각형 그리기
-        for i, rect in enumerate(rects):
-            x, y, dx, dy = rect['x'], rect['y'], rect['dx'], rect['dy']
-
-            # 사각형 배경 색상
-            ax.add_patch(
-                patches.Rectangle(
-                    (x, y),
-                    dx, dy,
-                    facecolor=colors[i],
-                    edgecolor='white',
-                    linewidth=2,
-                    alpha=0.8
+                # 배경 색상 사각형
+                ax.add_patch(
+                    patches.Rectangle(
+                        (x, y),
+                        dx, dy,
+                        facecolor=colors[i],
+                        edgecolor='white',
+                        linewidth=2,
+                        alpha=0.8
+                    )
                 )
-            )
 
-            # 텍스트 옵션 설정 (테마명)
-            text_options = {
-                'horizontalalignment': 'center',
-                'verticalalignment': 'center',
-                'fontsize': theme_font_size,
-                'fontweight': 'bold',
-                'color': 'white'
-            }
-            if font_prop is not None:
-                text_options['fontproperties'] = font_prop
+                # 텍스트 추가 (테마명과 상승률을 직접 지정)
+                if font_prop is not None:
+                    # 폰트 속성을 사용하여 텍스트 추가
+                    ax.text(
+                        x + dx / 2,
+                        y + dy / 2 - 0.02,
+                        f"{labels[i]}",
+                        fontproperties=font_prop,
+                        horizontalalignment='center',
+                        verticalalignment='center',
+                        fontsize=theme_font_size,
+                        fontweight='bold',
+                        color='white'
+                    )
 
-            # 테마명 텍스트 추가
-            ax.text(
-                x + dx / 2,
-                y + dy / 2 - 0.02,
-                f"{labels[i]}",
-                **text_options
-            )
+                    ax.text(
+                        x + dx / 2,
+                        y + dy / 2 + 0.04,
+                        f"{values[i]}%",
+                        fontproperties=font_prop,
+                        horizontalalignment='center',
+                        verticalalignment='center',
+                        fontsize=value_font_size,
+                        fontweight='bold',
+                        color='white'
+                    )
+                else:
+                    # 기본 폰트로 텍스트 추가
+                    ax.text(
+                        x + dx / 2,
+                        y + dy / 2 - 0.02,
+                        f"{labels[i]}",
+                        horizontalalignment='center',
+                        verticalalignment='center',
+                        fontsize=theme_font_size,
+                        fontweight='bold',
+                        color='white'
+                    )
 
-            # 상승률 텍스트 옵션 설정
-            value_options = {
-                'horizontalalignment': 'center',
-                'verticalalignment': 'center',
-                'fontsize': value_font_size,
-                'fontweight': 'bold',
-                'color': 'white'
-            }
-            if font_prop is not None:
-                value_options['fontproperties'] = font_prop
+                    ax.text(
+                        x + dx / 2,
+                        y + dy / 2 + 0.04,
+                        f"{values[i]}%",
+                        horizontalalignment='center',
+                        verticalalignment='center',
+                        fontsize=value_font_size,
+                        fontweight='bold',
+                        color='white'
+                    )
 
-            # 상승률 텍스트 추가
-            ax.text(
-                x + dx / 2,
-                y + dy / 2 + 0.04,
-                f"{values[i]}%",
-                **value_options
-            )
+            # 워터마크 추가
+            if watermark_enabled:
+                if font_prop is not None:
+                    fig.text(0.5, 0.5, watermark_text,
+                             fontproperties=font_prop,
+                             fontsize=watermark_size,
+                             color='white',
+                             ha='center',
+                             va='center',
+                             alpha=watermark_opacity,
+                             fontweight='bold',
+                             rotation=0)
+                else:
+                    fig.text(0.5, 0.5, watermark_text,
+                             fontsize=watermark_size,
+                             color='white',
+                             ha='center',
+                             va='center',
+                             alpha=watermark_opacity,
+                             fontweight='bold',
+                             rotation=0)
 
-        # 워터마크 추가
-        if watermark_enabled:
-            watermark_options = {
-                'fontsize': watermark_size,
-                'color': 'white',
-                'ha': 'center',
-                'va': 'center',
-                'alpha': watermark_opacity,
-                'fontweight': 'bold',
-                'rotation': 0
-            }
-            if font_prop is not None:
-                watermark_options['fontproperties'] = font_prop
-            fig.text(0.5, 0.5, watermark_text, **watermark_options)
-
-        # 제목 옵션 설정
-        title_options = {'fontsize': 18}
+        # 제목 추가
         if font_prop is not None:
-            title_options['fontproperties'] = font_prop
+            fig.suptitle(title_text, fontproperties=font_prop, fontsize=18)
+        else:
+            fig.suptitle(title_text, fontsize=18)
 
         # 그래프 설정
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.axis('off')
-        fig.suptitle(title_text, **title_options)
 
         # 그래프 표시
         st.pyplot(fig)
@@ -249,24 +279,31 @@ with col1:
             file_name="treemap.png",
             mime="image/png"
         )
-    else:
-        st.info("트리맵을 생성하려면 왼쪽 사이드바에서 데이터를 추가하세요.")
+    except Exception as e:
+        st.error(f"트리맵 생성 중 오류 발생: {str(e)}")
+        st.text("오류 상세 정보:")
+        st.exception(e)
 
-with col2:
-    st.header("샘플 데이터")
-    if st.button("샘플 데이터 불러오기"):
-        st.session_state.theme_data = {
-            "반도체 재료/부품": 12.91,
-            "화장품": 12.05,
-            "제약/바이오": 10.53,
-            "반도체 장비": 10.27,
-            "우주항공": 9.13,
-            "방산": 9.12,
-            "AI(인공지능)": 9.04,
-            "AI(엔비디아)": 8.99,
-            "음식료": 8.97,
-            "태양광": 8.73,
-            "소매유통": 8.47,
-            "이재명": 8.26
-        }
-        st.success("샘플 데이터가 로드되었습니다.")
+        # 폰트 없이 기본 방식으로 재시도
+        try:
+            st.warning("기본 설정으로 다시 시도합니다...")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sorted_data = sorted(st.session_state.theme_data.items(), key=lambda x: x[1], reverse=True)
+            labels = [item[0] for item in sorted_data]
+            values = [item[1] for item in sorted_data]
+
+            squarify.plot(
+                sizes=values,
+                label=[f"{l}\n{v}%" for l, v in zip(labels, values)],
+                alpha=.8,
+                color=plt.cm.get_cmap(color_option)(np.linspace(0.4, 0.8, len(values))),
+                ax=ax
+            )
+
+            ax.axis('off')
+            plt.title(title_text, fontsize=18)
+            st.pyplot(fig)
+        except Exception as e2:
+            st.error(f"대체 트리맵 생성 중에도 오류 발생: {str(e2)}")
+else:
+    st.info("트리맵을 생성하려면 데이터를 추가하거나 샘플 데이터를 불러오세요.")
