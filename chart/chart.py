@@ -176,7 +176,7 @@ if st.session_state.theme_data:
                     color='white'
                 )
 
-            # 워터마크 추가
+            # 워터마크 추가d
             if watermark_enabled:
                 fig.text(0.5, 0.5, watermark_text,
                          fontsize=watermark_size,
