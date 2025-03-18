@@ -145,7 +145,7 @@ if st.session_state.theme_data:
         # custom_color_code가 입력되면, 최고 상승률 항목은 원본 색상, 나머지는 어두워지도록 선형 보간
         if custom_color_code:
             base_rgb = to_rgb(custom_color_code)
-            dark_factor = 0.5  # 최저값일 때 밝기 배율 (0~1)
+            dark_factor = 0.7  # 최저값일 때 밝기 배율 (0~1)
             colors = []
             for n in normalized_values:
                 factor = dark_factor + (1 - dark_factor) * n
