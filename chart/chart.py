@@ -63,8 +63,6 @@ def setup_font():
         st.warning(f"폰트 설정 오류: {str(e)}")
         return None
 
-custom_color_code = st.sidebar.text_input("내부 색상 코드 (예: #ff0000)", value="")
-
 
 # 폰트 설정 적용
 font_prop = setup_font()
@@ -92,6 +90,8 @@ title_text = st.sidebar.text_input("제목", "테마별 주식 상승률 트리�
 # 폰트 크기 설정
 theme_font_size = st.sidebar.slider("테마명 폰트 크기", 8, 24, 14)
 value_font_size = st.sidebar.slider("상승률 폰트 크기", 8, 24, 16)
+
+custom_color_code = st.sidebar.text_input("내부 색상 코드 (예: #ff0000)", value="")
 
 # 워터마크 옵션
 watermark_enabled = st.sidebar.checkbox("워터마크 추가", True)
