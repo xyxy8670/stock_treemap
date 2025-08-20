@@ -88,13 +88,13 @@ st.sidebar.header("시각화 옵션")
 color_option = st.sidebar.selectbox("색상 계열 (미사용)", ["Reds", "Greens", "Blues", "Purples", "Oranges"])
 # 내부 색상 코드 입력: 사용자가 원하는 값을 입력 (예: "#FF0000")
 custom_color_code = st.sidebar.text_input("내부 색상 코드 (예: #FF0000)", value="#FF0000")
-title_text = st.sidebar.text_input("제목", "테마별 주식 상승률 트리맵")
-# 고정: 테마명 폰트 크기 17, 상승률 폰트 크기 14
-theme_font_size = 17
-value_font_size = 14
+title_text = st.sidebar.text_input("제목", "")
+# 폰트 크기 설정
+theme_font_size = st.sidebar.slider("테마명 폰트 크기", 8, 30, 17)
+value_font_size = st.sidebar.slider("상승률 폰트 크기", 8, 30, 14)
 
 # 워터마크 옵션 (워터마크 크기 85 고정)
-watermark_enabled = st.sidebar.checkbox("워터마크 추가", True)
+watermark_enabled = st.sidebar.checkbox("워터마크 추가", False)
 watermark_text = st.sidebar.text_input("워터마크 텍스트", "플스포")
 watermark_opacity = st.sidebar.slider("워터마크 투명도", 0.0, 1.0, 0.3)
 watermark_size = 85
@@ -240,10 +240,11 @@ if st.session_state.theme_data:
                         rotation=0
                     )
 
-        if font_prop is not None:
-            fig.suptitle(title_text, fontproperties=font_prop, fontsize=18)
-        else:
-            fig.suptitle(title_text, fontsize=18)
+        if title_text:  # 제목이 있을 때만 표시
+            if font_prop is not None:
+                fig.suptitle(title_text, fontproperties=font_prop, fontsize=18)
+            else:
+                fig.suptitle(title_text, fontsize=18)
 
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
