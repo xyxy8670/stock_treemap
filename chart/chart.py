@@ -89,9 +89,10 @@ color_option = st.sidebar.selectbox("색상 계열 (미사용)", ["Reds", "Green
 # 내부 색상 코드 입력: 사용자가 원하는 값을 입력 (예: "#FF0000")
 custom_color_code = st.sidebar.text_input("내부 색상 코드 (예: #FF0000)", value="#FF0000")
 title_text = st.sidebar.text_input("제목", "")
-# 폰트 크기 설정
+# 폰트 크기 및 간격 설정
 theme_font_size = st.sidebar.slider("테마명 폰트 크기", 8, 30, 17)
 value_font_size = st.sidebar.slider("상승률 폰트 크기", 8, 30, 14)
+line_spacing = st.sidebar.slider("줄 간격 (글자 사이 여백)", 0.01, 0.15, 0.06, step=0.01)
 
 # 워터마크 옵션 (워터마크 크기 85 고정)
 watermark_enabled = st.sidebar.checkbox("워터마크 추가", False)
@@ -173,7 +174,7 @@ if st.session_state.theme_data:
                 if font_prop is not None:
                     ax.text(
                         x + dx / 2,
-                        y + dy / 2 - 0.02,
+                        y + dy / 2 - line_spacing,
                         f"{labels[i]}",
                         fontproperties=font_prop,
                         horizontalalignment='center',
@@ -184,7 +185,7 @@ if st.session_state.theme_data:
                     )
                     ax.text(
                         x + dx / 2,
-                        y + dy / 2 + 0.04,
+                        y + dy / 2 + line_spacing,
                         f"{values[i]}%",
                         fontproperties=font_prop,
                         horizontalalignment='center',
@@ -196,7 +197,7 @@ if st.session_state.theme_data:
                 else:
                     ax.text(
                         x + dx / 2,
-                        y + dy / 2 - 0.02,
+                        y + dy / 2 - line_spacing,
                         f"{labels[i]}",
                         horizontalalignment='center',
                         verticalalignment='center',
@@ -206,7 +207,7 @@ if st.session_state.theme_data:
                     )
                     ax.text(
                         x + dx / 2,
-                        y + dy / 2 + 0.04,
+                        y + dy / 2 + line_spacing,
                         f"{values[i]}%",
                         horizontalalignment='center',
                         verticalalignment='center',
