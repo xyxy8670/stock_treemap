@@ -110,7 +110,7 @@ df = pd.DataFrame(df_data)
 edited_df = st.sidebar.data_editor(
     df,
     num_rows="dynamic",
-    use_container_width=True,
+    width='stretch',
     key="editable_data"
 )
 new_data = {}
