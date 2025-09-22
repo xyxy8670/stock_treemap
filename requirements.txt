@@ -1,0 +1,9 @@
+streamlit
+matplotlib
+squarify
+numpy
+pandas
+openpyxl
+requests
+
+
